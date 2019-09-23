@@ -3,14 +3,8 @@ import org.telegram.telegrambots.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.regex.PatternSyntaxException;
+import java.io.*;
+import java.util.*;
 
 public class BotUtils extends Bot {
 
@@ -26,25 +20,11 @@ public class BotUtils extends Bot {
         }
     }
 
-    void sendReplyKeyboard(Long chatId, String[] optionsNames, String messageToDisplayBefore) {
+    void sendReplyKeyboard(Long chatId, List<String> optionsNames, String messageToDisplayBefore) {
 
         SendMessage sendMessage = new SendMessage();
 
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        // Create the keyboard (list of keyboard rows)
-        List<KeyboardRow> keyboard = new ArrayList<KeyboardRow>();
-        // Create a keyboard row
-        KeyboardRow row = new KeyboardRow();
-        // Set each button, you can also use KeyboardButton objects if you need something else than text
-
-        for (String optionName : optionsNames) {
-            row.add(optionName);
-        }
-
-        keyboard.add(row);
-
-        keyboardMarkup.setKeyboard(keyboard);
-        // Add it to the message
+        ReplyKeyboardMarkup keyboardMarkup = setReplayKeyBord(optionsNames);
         sendMessage.setReplyMarkup(keyboardMarkup);
         sendMessage.setChatId(chatId);
         sendMessage.setText(messageToDisplayBefore);
@@ -56,11 +36,11 @@ public class BotUtils extends Bot {
         }
     }
 
-    DonorsResponse convertDonationToMap(String messageFromClint, Long chatId) {
+    HashMap<String, String> convertDonationToMap(Long chatId, String messageFromClint) {
 
         Reader inputString = new StringReader(messageFromClint);
         BufferedReader reader = new BufferedReader(inputString);
-        HashMap<String, Integer> donorsMap = new HashMap<String, Integer>();
+        HashMap<String, String> donorsMap = new HashMap<String, String>();
         String line;
         String[] donorNameAndAmount;
         boolean isPassedMapping = false;
@@ -69,13 +49,14 @@ public class BotUtils extends Bot {
             while ((line = reader.readLine()) != null) {
 
                 donorNameAndAmount = line.split("-");
-                donorsMap.put(donorNameAndAmount[0], Integer.parseInt(donorNameAndAmount[1].trim()));
+                donorsMap.put(donorNameAndAmount[0], donorNameAndAmount[1].trim());
             }
+
             isPassedMapping = true;
         }
 
         catch (IOException e) {
-            System.out.println("file not found" + e.getMessage());
+            System.out.println("not found" + e.getMessage());
         }
         catch (Exception e){
             sendTextMessage(chatId, "please verify the syntax of the donors");
@@ -83,6 +64,23 @@ public class BotUtils extends Bot {
         if(!isPassedMapping){
             donorsMap = null;
         }
-        return new DonorsResponse(donorsMap, isPassedMapping);
+        return donorsMap;
+    }
+
+    private ReplyKeyboardMarkup setReplayKeyBord(List<String> options){
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        KeyboardRow row = new KeyboardRow();
+        for (int i = 0; i < options.size(); i += 2){
+            row.add(options.get(i));
+            if(i + 1 < options.size()){
+                row.add(options.get(i+1));
+            }
+            KeyboardRow tempRow = row;
+            row = new KeyboardRow();
+            keyboard.add(tempRow);
+        }
+        replyKeyboardMarkup.setKeyboard(keyboard);
+        return replyKeyboardMarkup;
     }
 }
