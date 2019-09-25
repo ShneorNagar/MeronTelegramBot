@@ -17,11 +17,13 @@ public class Bot extends TelegramLongPollingBot {
     private String donateStatus;
     private BotUtils botUtils;
     private File report;
-    private List<String> reportType = new ArrayList<>(Arrays.asList("new report", "existing report"));
-    private final String fileTypeMessage = "and the report will be written to?...";
-    static String newReportRequestMessage = "please give me the report name " +
-            "i want to know that is new report so please write at the beginning" +
-            "'report'";
+    private List<String> reportType = new ArrayList<>(Arrays.asList("דוח חדש", "דוח קיים"));
+    private final String fileTypeMessage = "תרצה שאכתוב לך לדוח חדש או קיים?";
+    static String newReportRequestMessage = "אוקיי.. בכיף!\n" +
+            "רק תן לי בבקשה שם לדוח.\n" +
+            "אבל בבקשה שהשם יתחיל במילה 'דוח', כדי שאוכל להבין זאת \uD83E\uDD16";
+    private final String dontSkip = "היי.. יש סדר בליובאוויטש.. \n" +
+            "לא לדלג שלבים בבקשה \uD83D\uDE4F";
     static ProssesEscorter prossesEscorter = new ProssesEscorter();
 
     public void onUpdateReceived(Update update) {
@@ -41,29 +43,29 @@ public class Bot extends TelegramLongPollingBot {
              * starting point of the bot
              * asking user if want to add new donation
              * or to produce report by name*/
-            if (messageFromClint.equals("/start")) {
+            if (messageFromClint.equals("היי") || messageFromClint.equals("שלום")) {
 
-                botUtils.sendTextMessage(chatId, "welcome " + firstName + " " + lastName);
+                botUtils.sendTextMessage(chatId, "ברוך הבא " + firstName + " " + lastName);
 
-                List<String> options = new ArrayList<>(Arrays.asList("add new donation", "get report by name"));
+                List<String> options = new ArrayList<>(Arrays.asList("דוח חדש", "דוח קיים"));
 
-                botUtils.sendReplyKeyboard(chatId, options, "please select an option");
+                botUtils.sendReplyKeyboard(chatId, options, "אנא בחר באחת מהאפשרויות");
             }
             /**
              * to add new donation
              * from two options
              * cash or gift
              * */
-            else if (messageFromClint.equals("add new donation")) {
+            else if (messageFromClint.equals("דוח חדש")) {
 
-                List<String> paymentMethods = new ArrayList<>(Arrays.asList("cash", "gift"));
-                String message = "please select payment method";
+                List<String> paymentMethods = new ArrayList<>(Arrays.asList("מזומן", "מתנה"));
+                String message = "בחר סוג תרומה בבקשה";
                 botUtils.sendReplyKeyboard(chatId, paymentMethods, message);
             }
             /**
              * in case user choose to donate with cash
              * */
-            else if (messageFromClint.equals("cash")) {
+            else if (messageFromClint.equals("מזומן")) {
 
                 prossesEscorter.completeDonationType();
                 donateStatus = DonateStatusEnum.CASH.getEnumValue();
@@ -72,7 +74,7 @@ public class Bot extends TelegramLongPollingBot {
             /**
              * in case user choose to donate with gift
              * */
-            else if (messageFromClint.equals("gift")) {
+            else if (messageFromClint.equals("מתנה")) {
 
                 prossesEscorter.completeDonationType();
                 donateStatus = DonateStatusEnum.GIFT.getEnumValue();
@@ -82,7 +84,7 @@ public class Bot extends TelegramLongPollingBot {
             /**
              * in case user choose to write current donation to new report
              * */
-            else if (messageFromClint.equals("new report")) {
+            else if (messageFromClint.equals("דוח חדש")) {
 
                 isNewReport = true;
 
@@ -90,27 +92,28 @@ public class Bot extends TelegramLongPollingBot {
                     botUtils.sendTextMessage(chatId, newReportRequestMessage);
                     prossesEscorter.completeFileReportType();
                 } else {
-                    botUtils.sendTextMessage(chatId, "don't skip steps please");
+                    botUtils.sendTextMessage(chatId, dontSkip);
                 }
             }
             /**
              * in case user choose to write donation to existing report
              * */
-            else if (messageFromClint.equals("existing report")) {
+            else if (messageFromClint.equals("דוח קיים")) {
 
                 isNewReport = false;
+                reportsManager.loadFiles();
 
                 if (prossesEscorter.donationTypeCompleted) {
                     prossesEscorter.completeFileReportType();
-                    sendReplayKeyBordToUser(chatId, reportsManager.getAllReportsNames(), "please select report");
+                    sendReplayKeyBordToUser(chatId, reportsManager.getAllReportsNames(), "בחר דוח מהרשימה");
                 } else {
-                    botUtils.sendTextMessage(chatId, "don't skip steps please");
+                    botUtils.sendTextMessage(chatId, dontSkip);
                 }
 
                 /**
                  * report handler
                  * */
-            } else if (messageFromClint.startsWith("report")) {
+            } else if (messageFromClint.startsWith("דוח")) {
 
                 if (isGetReport) {
                     File report = reportsManager.getExistingReportByName(botUtils, chatId, messageFromClint);
@@ -128,6 +131,7 @@ public class Bot extends TelegramLongPollingBot {
                     prossesEscorter.completeReportName();
                     requestForDonation(chatId);
                 }
+                isGetReport = false;
             }
 
             /**
@@ -135,10 +139,10 @@ public class Bot extends TelegramLongPollingBot {
              * bot will send all report names
              * user will select from ReplayKeyBord
              * */
-            else if (messageFromClint.equals("get report by name")) {
+            else if (messageFromClint.equals("דוח קיים")) {
 
-                botUtils.sendTextMessage(chatId, "please choose your report");
-                sendReplayKeyBordToUser(chatId, reportsManager.getAllReportsNames(), "please select report");
+                reportsManager.loadFiles();
+                sendReplayKeyBordToUser(chatId, reportsManager.getAllReportsNames(), "בחר דוח מהרשימה");
                 isGetReport = true;
             }
             /**
@@ -155,7 +159,7 @@ public class Bot extends TelegramLongPollingBot {
 
                     initVariablesAndSendEndingMessage(chatId);
                 } else {
-                    sendMessageToUser(chatId, "don't skip steps please");
+                    sendMessageToUser(chatId, dontSkip);
                 }
             }
         }
@@ -163,7 +167,8 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     private void initVariablesAndSendEndingMessage(Long chatId) {
-        sendMessageToUser(chatId, "thank you the donation saved in " + report.getName()); // todo add emoji or picture for gritting
+        sendMessageToUser(chatId, "אוקיי..\n" +
+                "שמרתי לך את התרומה בקובץ " + report.getName()); // todo add emoji or picture for gritting
         prossesEscorter = new ProssesEscorter();
         String donateStatus = null;
         isNewReport = false;
@@ -173,19 +178,10 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     private void requestForDonation(Long chatId) {
-        botUtils.sendTextMessage(chatId, "please send the donors with '-' " +
-                "between name and amount of donation");
-    }
-
-    private void requestForReportType(Long chatId) {
-
-        List<String> reportType = new ArrayList<>();
-        reportType.addAll(Arrays.asList("new report", "existing report"));
-        botUtils.sendReplyKeyboard(chatId, reportType, "and the report will be written to?...");
-    }
-
-    private void complainAboutSkippingProsses(Long chatId) {
-        botUtils.sendTextMessage(chatId, "you need to choose donation type first");
+        botUtils.sendTextMessage(chatId, "שלח לי בבקשה את רשימת התרומות בצורה הבאה.\n" +
+                "תורם - סכום\n" +
+                "תורם - סכום\n" +
+                "וכו'..");
     }
 
     private void sendMessageToUser(Long chatId, String message) {
@@ -201,7 +197,7 @@ public class Bot extends TelegramLongPollingBot {
         SendDocument sendDocument = new SendDocument();
         sendDocument.setChatId(chatId);
         sendDocument.setNewDocument(fileToSend);
-        sendDocument.setCaption("there you go");
+        sendDocument.setCaption("הנה הדוח");
         sendDocument(sendDocument);
     }
 

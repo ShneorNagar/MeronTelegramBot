@@ -3,58 +3,43 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.HashMap;
 
-public class ExcelWriter{
+public class ExcelWriter {
 
     private HashMap<String, String> donorsList;
-    private File fileToWorkOn = null;
+    private File fileToWorkOn;
     private String donationStatus;
     private boolean isNewReport;
     Workbook workbook;
 
-    public ExcelWriter(File report, HashMap<String, String> donors, String donationStatus, boolean isNewReport){
+    public ExcelWriter(File report, HashMap<String, String> donors, String donationStatus, boolean isNewReport) {
         this.fileToWorkOn = report;
         this.donorsList = donors;
-        this.donationStatus= donationStatus;
+        this.donationStatus = donationStatus;
         this.isNewReport = isNewReport;
-        this.workbook = new XSSFWorkbook();
     }
 
-    private Sheet createNewSheet(){
-        return donationStatus.equals(DonateStatusEnum.CASH.getEnumValue()) ?
-                workbook.createSheet(DonateStatusEnum.CASH.getEnumValue()) :
-                workbook.createSheet(DonateStatusEnum.GIFT.getEnumValue());
-    }
 
-    private Sheet getExistingSheet(){
-        return donationStatus.equals(DonateStatusEnum.CASH.getEnumValue()) ?
-                workbook.getSheet(DonateStatusEnum.CASH.getEnumValue()) :
-                workbook.getSheet(DonateStatusEnum.GIFT.getEnumValue());
-    }
-
-    void perform(){
+    void perform() {
 
         Sheet sheet;
-        if (isNewReport){
+        if (isNewReport) {
+            workbook = new XSSFWorkbook();
             sheet = createNewSheet();
-        }else {
-            try {
-                sheet = getExistingSheet();
-            }catch (Exception e){
-                // is case there is a report but without this sheet
-                sheet = createNewSheet();
-            }
+        } else {
+            workbook = getExistingWorkbook(fileToWorkOn);
+            sheet = getExistingSheet() == null ? createNewSheet() : getExistingSheet();
         }
 
-        for (String key : donorsList.keySet()){
-            int lastRowNum = sheet.getLastRowNum();
-            Row row = sheet.createRow(lastRowNum);
+        int lastRowNum = sheet.getLastRowNum();
+        Row row = sheet.createRow(lastRowNum);
+
+        for (String key : donorsList.keySet()) {
             row.createCell(0).setCellValue(key);
             row.createCell(1).setCellValue(donorsList.get(key));
+            row = sheet.createRow(sheet.getPhysicalNumberOfRows());
         }
 
         try {
@@ -65,8 +50,30 @@ public class ExcelWriter{
 
             // Closing the workbook
             workbook.close();
-        }catch (IOException e){
+        } catch (IOException e) {
 
         }
+    }
+
+    private XSSFWorkbook getExistingWorkbook(File file) {
+        try {
+            FileInputStream inputStream = new FileInputStream(file.getPath());
+            return new XSSFWorkbook(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private Sheet createNewSheet() {
+        return donationStatus.equals(DonateStatusEnum.CASH.getEnumValue()) ?
+                workbook.createSheet(DonateStatusEnum.CASH.getEnumValue()) :
+                workbook.createSheet(DonateStatusEnum.GIFT.getEnumValue());
+    }
+
+    private Sheet getExistingSheet() {
+        return donationStatus.equals(DonateStatusEnum.CASH.getEnumValue()) ?
+                workbook.getSheet(DonateStatusEnum.CASH.getEnumValue()) :
+                workbook.getSheet(DonateStatusEnum.GIFT.getEnumValue());
     }
 }

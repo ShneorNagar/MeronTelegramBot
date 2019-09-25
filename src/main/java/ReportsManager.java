@@ -7,7 +7,7 @@ class ReportsManager {
     private File[] reportsFolder;
     private String reportsFolderPath;
 
-    public ReportsManager(){
+    public void loadFiles(){
         reportsFolderPath = getClass().getClassLoader().getResource("reports").getPath();
         reportsFolder = new File(reportsFolderPath).listFiles();
     }
@@ -40,7 +40,7 @@ class ReportsManager {
                 return currentReport;
             }
         }
-        botUtils.sendTextMessage(chatId, "report " + reportName + " dose not exist");
+        botUtils.sendTextMessage(chatId,reportName + " dose not exist");
         return null;
     }
 
